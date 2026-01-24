@@ -1,0 +1,44 @@
+name: CI Agent Evaluation
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      # We need Ollama running. Since GitHub actions don't have GPU, 
+      # this will run slow (CPU mode). For production, point to a remote GPU server.
+      # Here we simulate local run.
+      
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.9"
+
+    - name: Install Dependencies
+      run: |
+        pip install -r requirements.txt
+    
+    - name: Install Ollama
+      run: curl -fsSL https://ollama.com/install.sh | sh
+    
+    - name: Start Ollama Server
+      run: ollama serve &
+
+    - name: Pull Model (Small model for CI speed)
+      run: |
+        sleep 5
+        ollama pull qwen2.5-coder:1.5b
+
+    - name: Run Benchmark (Test on 5 problems)
+      # We override the model name in agent.py via env var or just modify the call for CI
+      # For this example, ensure agent.py can take model config or defaults to a small model
+      run: python tests/benchmark.py 5
