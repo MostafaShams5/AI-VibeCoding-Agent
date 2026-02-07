@@ -39,7 +39,6 @@ Below is a comparison of our agent against top-tier closed-source models (data s
 | **4** | **VibeCoding Agent (Ours)** | **Open Source (7B)** | **89.0%** |
 | 5 | Claude 3.5 Haiku | Proprietary | 88.1% |
 | 6 | GPT-4.5 | Proprietary | 88.0% |
-| 7 | Qwen2.5-Coder-7B (Base) | Open Source | 61.6% |
 
 **Key Takeaway:** Our agent, running locally on a standard consumer CPU/GPU, **outperforms GPT-4.5 and Claude 3.5 Haiku**, proving that *Agentic Workflows* > *Raw Parameter Count*.
 
