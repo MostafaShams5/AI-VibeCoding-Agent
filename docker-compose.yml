@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_service
+    # Expose the API port so the Agent can reach it
+    ports:
+      - "11434:11434"
+    # Persist models so you don't download 7GB every time you restart
+    volumes:
+      - ollama_storage:/root/.ollama
+    # Create a private network for these tools to talk
+    networks:
+      - agent_network
+    # (Optional) Enable GPU support if you are on Linux/Nvidia
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  agent:
+    build: .
+    container_name: vibe_agent
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434  # <--- CRITICAL: Talking to the other container by name
+      - LLM_MODEL=qwen2.5-coder:7b
+    # Map your local source code to the container (Hot-Reloading!)
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+    networks:
+      - agent_network
+    command: tail -f /dev/null
+
+networks:
+  agent_network:
+    driver: bridge
+
+volumes:
+  ollama_storage:
