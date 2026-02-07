@@ -27,7 +27,7 @@ HumanEval is a rigorous benchmark released by OpenAI consisting of **164 program
 * **Agent Performance:** By implementing the self-healing loop, this agent achieved a pass rate of **89.0%** on the same benchmark.
 
 ### Comparison to SOTA LLMs
-By implementing an agentic "Reflexion" loop, our local 7B model bridges the gap between open-source and state-of-the-art proprietary models. 
+By implementing an agentic "Reflexion" loop, our local 7B model bridges the gap between open-source and state-of-the-art proprietary models.
 
 Below is a comparison of our agent against top-tier closed-source models (data sourced from [LLM-Stats](https://llm-stats.com/benchmarks/humaneval?utm_source=chatgpt.com)):
 
@@ -39,12 +39,13 @@ Below is a comparison of our agent against top-tier closed-source models (data s
 | **4** | **VibeCoding Agent (Ours)** | **Open Source (7B)** | **89.0%** |
 | 5 | Claude 3.5 Haiku | Proprietary | 88.1% |
 | 6 | GPT-4.5 | Proprietary | 88.0% |
+| 7 | Qwen2.5-Coder-7B (Base) | Open Source | 61.6% |
 
 **Key Takeaway:** Our agent, running locally on a standard consumer CPU/GPU, **outperforms GPT-4.5 and Claude 3.5 Haiku**, proving that *Agentic Workflows* > *Raw Parameter Count*.
 
 **Evidence:**
 You can view the full execution logs, methodology, and verified results in this Kaggle Notebook:
-👉 **[View Benchmark Results on Kaggle](https://www.kaggle.com/code/shamsccs/humaneval-grade-ai-agent-kaggle-version?scriptVersionId=293582845)**
+ **[View Benchmark Results on Kaggle](https://www.kaggle.com/code/shamsccs/humaneval-grade-ai-agent-kaggle-version?scriptVersionId=293582845)**
 
 ## Technical Architecture
 
@@ -72,10 +73,20 @@ This project uses **Docker Compose** to orchestrate the Agent and the LLM as sep
     docker compose up -d --build
     ```
 
-2.  **Initialize the Model (First Run Only):**
-    Since the inference server is fresh, we need to pull the specific model we want to use. We use the **1.5B parameter model** for CPU efficiency during local testing, but you can pull `7b` if you have a GPU.
+2.  **Initialize the Model:**
+    *Note: The default configuration uses the **1.5B** model for fast local testing on CPUs. To reproduce the **89%** benchmark score, you must pull the **7B** model.*
+
+    **Option A: Fast CPU Testing (Default)**
     ```bash
     docker exec -it ollama_service ollama pull qwen2.5-coder:1.5b
+    ```
+
+    **Option B: High-Accuracy Benchmark (Requires 8GB+ RAM)**
+    ```bash
+    # Pull the larger model
+    docker exec -it ollama_service ollama pull qwen2.5-coder:7b
+    # Update the running agent to use it
+    docker exec -it vibe_agent sh -c "export LLM_MODEL=qwen2.5-coder:7b && python tests/benchmark.py"
     ```
 
 3.  **Run the Benchmark:**
@@ -90,9 +101,9 @@ The agent is designed to be model-agnostic and fully configurable via environmen
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `LLM_MODEL` | `qwen2.5-coder:7b` | The specific Ollama model tag to use (e.g., `qwen2.5-coder:1.5b` for CPU). |
+| `LLM_MODEL` | `qwen2.5-coder:1.5b` | The specific Ollama model tag to use. Change to `qwen2.5-coder:7b` for maximum accuracy. |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | URL of the inference server. In Docker, this is `http://ollama:11434`. |
-| `MAX_RETRIES` | `2` | Number of self-healing attempts allowed before giving up. |
+| `MAX_RETRIES` | `3` | Number of self-healing attempts allowed before giving up. |
 
 ## Automation & CI/CD
 
