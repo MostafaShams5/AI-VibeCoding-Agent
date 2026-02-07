@@ -22,41 +22,51 @@ We validated this agent against the **HumanEval Benchmark**, the industry standa
 ### What is HumanEval?
 HumanEval is a rigorous benchmark released by OpenAI consisting of **164 programming problems**. Each problem includes a function signature, docstring, body, and several unit tests. To "pass," a model must generate code that satisfies **all** unit tests for a given problem (Pass@1).
 
-### Our Results
-* **Base Model (Verified):** We verified that the raw Qwen2.5-Coder-7B model achieves a pass rate of approximately **61%** on HumanEval (0-shot), which aligns with findings in recent research papers (e.g., [ArXiv:2409.12186](https://arxiv.org/pdf/2409.12186)).
-* **Agent Performance:** By implementing the self-healing loop, this agent achieved a pass rate of **89.0%** on the same benchmark.
-
-### Comparison to SOTA LLMs
+###  Comparison to SOTA LLMs
 By implementing an agentic "Reflexion" loop, our local 7B model bridges the gap between open-source and state-of-the-art proprietary models.
 
 Below is a comparison of our agent against top-tier closed-source models (data sourced from [LLM-Stats](https://llm-stats.com/benchmarks/humaneval?utm_source=chatgpt.com)):
 
 | Rank | Model | Type | Pass@1 (HumanEval) |
 | :--- | :--- | :--- | :--- |
-| 1 | Claude 3.5 Sonnet | Proprietary | 93.7% |
+| 1 | **Claude 3.5 Sonnet** | Proprietary | **93.7%** |
 | 2 | GPT-5 | Proprietary | 93.4% |
 | 3 | GPT-4o | Proprietary | 90.2% |
 | **4** | **VibeCoding Agent (Ours)** | **Open Source (7B)** | **89.0%** |
 | 5 | Claude 3.5 Haiku | Proprietary | 88.1% |
 | 6 | GPT-4.5 | Proprietary | 88.0% |
-| 7 | Qwen2.5-Coder-7B (Base) | Open Source | 61.6% |
 
 **Key Takeaway:** Our agent, running locally on a standard consumer CPU/GPU, **outperforms GPT-4.5 and Claude 3.5 Haiku**, proving that *Agentic Workflows* > *Raw Parameter Count*.
+
+### Our Specific Results
+* **Base Model (Verified):** We verified that the raw Qwen2.5-Coder-7B model achieves a pass rate of approximately **61%** on HumanEval (0-shot), which aligns with findings in recent research papers (e.g., [ArXiv:2409.12186](https://arxiv.org/pdf/2409.12186)).
+* **Agent Performance:** By implementing the self-healing loop, this agent achieved a pass rate of **89.0%** on the same benchmark.
 
 **Evidence:**
 You can view the full execution logs, methodology, and verified results in this Kaggle Notebook:
  **[View Benchmark Results on Kaggle](https://www.kaggle.com/code/shamsccs/humaneval-grade-ai-agent-kaggle-version?scriptVersionId=293582845)**
 
-## Technical Architecture
+##  How It Works
 
-The codebase follows a **Microservices Architecture**, separating the inference engine from the application logic.
+This project is not just a script; it is a **State Machine** built with `LangGraph`. Here is exactly how the system operates:
 
-### File Structure
-* `src/agent.py`: Defines the state machine graph using LangGraph. This manages the flow between writing code and testing it.
-* `src/nodes.py`: Contains the specific logic for the Coder (LLM interaction) and Executor (Python subprocess handling) nodes.
-* `tests/benchmark.py`: A script to run the agent against the HumanEval dataset and calculate the final pass rate.
-* `docker-compose.yml`: Orchestrates the multi-container environment (Agent + Ollama).
-* `.github/workflows`: Automation pipelines for Continuous Integration.
+### 1. The State Graph (`src/agent.py`)
+The application defines a graph with a shared state (`AgentState`) containing:
+* `code`: The current Python implementation.
+* `error`: The stderr output from the last execution.
+* `iteration`: A counter to prevent infinite loops.
+
+### 2. The Feedback Loop
+1.  **Generation Phase:** The `coder_node` receives the user prompt. If the state contains an `error`, the system injects the previous error message into the prompt, asking the LLM to "fix the code based on this error."
+2.  **Execution Phase:** The `executor_node` spins up a secure Python subprocess. It writes the generated code to a temporary file, appends the unit tests, and runs it.
+3.  **Decision Logic:**
+    * **Success:** If `TEST_PASSED` is printed to stdout, the graph terminates.
+    * **Failure:** If an exception occurs, the graph loops back to the `coder_node`, carrying the error trace.
+
+### 3. Microservices Architecture
+To ensure scalability and clean environments, we decoupled the **Brain** (Ollama) from the **Body** (Agent) using Docker Compose:
+* **Service A (`ollama`):** Handles pure inference. It exposes an API on port 11434.
+* **Service B (`agent`):** Handles the application logic. It communicates with Service A via the internal Docker network (`http://ollama:11434`), ensuring that updating the application code doesn't require reloading the heavy LLM into memory.
 
 ## Installation and Usage
 
